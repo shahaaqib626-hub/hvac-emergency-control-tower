@@ -1,0 +1,712 @@
+{
+  "name": "AI HVAC Emergency Service Control Tower",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "812c84de-b53a-4d5d-bb88-d8732357c42a",
+        "formTitle": "HVAC Emergency Service Control Tower",
+        "formDescription": "Submit a live HVAC service event for AI-powered priority and dispatch analysis.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Customer Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Customer Email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Phone",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Customer Type",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Residential"
+                  },
+                  {
+                    "option": "Commercial"
+                  },
+                  {
+                    "option": "Critical Facility"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Issue Description",
+              "fieldType": "textarea",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Service Address",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Event Type",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "New Emergency"
+                  },
+                  {
+                    "option": "Technician Cancellation"
+                  },
+                  {
+                    "option": "Customer Escalation"
+                  },
+                  {
+                    "option": "Part Availability Problem"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d5386152-bdcf-4104-b3d7-23914d9ca7fc",
+      "name": "Emergency Event Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2,
+      "position": [
+        -1536,
+        48
+      ],
+      "webhookId": "812c84de-b53a-4d5d-bb88-d8732357c42a"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are an HVAC emergency operations analyst.\n\nYour job is to classify an incoming HVAC service event for dispatch decision-making.\n\nAnalyze only the information provided.\n\nDetermine:\n- operational priority\n- HVAC issue category\n- required technician skills\n- likely required parts\n- business impact\n- customer risk\n\nNever invent specific facts that are not supported by the event.\n\nReturn ONLY valid JSON.\n\nAllowed priority values:\nCRITICAL\nHIGH\nMEDIUM\nLOW\n\nAllowed issue categories:\ncooling\nheating\nelectrical\ncompressor\nrefrigerant\nairflow\nleakage\nother\n\nReturn this exact JSON structure:\n\n{\n  \"priority\": \"\",\n  \"issue_category\": \"\",\n  \"required_skills\": [],\n  \"required_parts\": [],\n  \"business_impact\": \"\",\n  \"reason\": \"\",\n  \"customer_risk\": \"\"\n}",
+              "role": "system"
+            },
+            {
+              "content": "=Analyze this HVAC operational event:\n\nCustomer Name:\n{{ $json[\"Customer Name\"] }}\n\nCustomer Type:\n{{ $json[\"Customer Type\"] }}\n\nIssue Description:\n{{ $json[\"Issue Description\"] }}\n\nService Address:\n{{ $json[\"Service Address\"] }}\n\nEvent Type:\n{{ $json[\"Event Type\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bd5643e8-3f42-4ac5-8fef-ff7971634428",
+      "name": "AI - Event Classification",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -1344,
+        48
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "event_id",
+              "value": "={{'EVT-' + $now.toMillis()}}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "customer_name",
+              "value": "={{$('Emergency Event Form').item.json['Customer Name']}}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "customer_email",
+              "value": "={{$('Emergency Event Form').item.json['Customer Email']}}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "customer_type",
+              "value": "={{$('Emergency Event Form').item.json['Customer Type']}}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "issue_description",
+              "value": "={{$('Emergency Event Form').item.json['Issue Description']}}",
+              "type": "string"
+            },
+            {
+              "id": "a6",
+              "name": "service_address",
+              "value": "={{$('Emergency Event Form').item.json['Service Address']}}",
+              "type": "string"
+            },
+            {
+              "id": "a7",
+              "name": "event_type",
+              "value": "={{$('Emergency Event Form').item.json['Event Type']}}",
+              "type": "string"
+            },
+            {
+              "id": "a8",
+              "name": "priority",
+              "value": "={{JSON.parse($json.message.content).priority}}",
+              "type": "string"
+            },
+            {
+              "id": "a9",
+              "name": "issue_category",
+              "value": "={{JSON.parse($json.message.content).issue_category}}",
+              "type": "string"
+            },
+            {
+              "id": "a10",
+              "name": "required_skills",
+              "value": "={{JSON.stringify(JSON.parse($json.message.content).required_skills)}}",
+              "type": "string"
+            },
+            {
+              "id": "a11",
+              "name": "required_parts",
+              "value": "={{JSON.stringify(JSON.parse($json.message.content).required_parts)}}",
+              "type": "string"
+            },
+            {
+              "id": "a12",
+              "name": "business_impact",
+              "value": "={{JSON.parse($json.message.content).business_impact}}",
+              "type": "string"
+            },
+            {
+              "id": "a13",
+              "name": "customer_risk",
+              "value": "={{JSON.parse($json.message.content).customer_risk}}",
+              "type": "string"
+            },
+            {
+              "id": "a14",
+              "name": "classification_reason",
+              "value": "={{JSON.parse($json.message.content).reason}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b6019ce7-eeab-4c07-b42f-9f3c60acfafc",
+      "name": "Normalize Emergency Event",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -976,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "413b4d78-a969-4143-8dbb-34a74345775d",
+      "name": "Date & Time - Operational Clock",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "technician_context",
+              "value": "=[{\"tech_id\":\"TECH-001\",\"name\":\"Ali Raza\",\"city\":\"Lahore\",\"status\":\"available\",\"available_from\":\"15:00\",\"skills\":[\"AC\",\"compressor\",\"electrical\"],\"distance_km\":6,\"truck_parts\":[\"capacitor\",\"contactor\",\"refrigerant\"]},{\"tech_id\":\"TECH-002\",\"name\":\"Hamza Khan\",\"city\":\"Lahore\",\"status\":\"busy\",\"available_from\":\"16:30\",\"skills\":[\"AC\"],\"distance_km\":4,\"truck_parts\":[\"contactor\"]},{\"tech_id\":\"TECH-003\",\"name\":\"Usman Tariq\",\"city\":\"Lahore\",\"status\":\"available\",\"available_from\":\"14:45\",\"skills\":[\"AC\",\"electrical\"],\"distance_km\":18,\"truck_parts\":[\"capacitor\"]}]",
+              "type": "string"
+            },
+            {
+              "id": "c2",
+              "name": "operational_rules",
+              "value": "Critical commercial/cooling incidents affecting business-critical spaces should be prioritized. Prefer qualified technicians with compatible skills, earlier availability, shorter travel distance, and required truck parts. If no technician safely satisfies the constraints, escalate to a manager. Do not invent availability or inventory.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "032d9a16-1d82-42be-8cdf-d826b3785e93",
+      "name": "Operational Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -496,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=EMERGENCY EVENT\n\n{{ JSON.stringify($('Normalize Emergency Event').item.json) }}\nIMPORTANT EVENT HANDLING:\n\nEvent Type:\n{{ $('Normalize Emergency Event').item.json.event_type }}\n\nIf Event Type is \"Technician Cancellation\", determine whether a replacement technician is available.\n\nIn that situation:\n- Return REASSIGN if a suitable replacement exists.\n- Return ESCALATE if no suitable replacement exists.\n- Never return DISPATCH for a Technician Cancellation event.\nCURRENT OPERATIONAL TIME\n\n{{ JSON.stringify($('Date & Time - Operational Clock').item.json) }}\n\nTECHNICIAN CONTEXT\n\n{{ $('Operational Context').item.json.technician_context }}\n\nOPERATIONAL RULES\n\n{{ $('Operational Context').item.json.operational_rules }}\n\nIMPORTANT:\n\nThe technician_context above is a JSON array encoded as text.\n\nParse it as a JSON array before making your decision.\n\nEvaluate every technician individually.\n\nA technician is suitable only if:\n1. Their status and availability allow the emergency to be handled.\n2. Their skills match the required skills.\n3. Their truck_parts contain the required parts when parts are required.\n\nFor a CRITICAL emergency, strongly prioritize an available qualified technician with the required parts.\n\nDo not escalate if at least one technician satisfies the requirements.\n\nReturn ONLY valid JSON.\nDo not wrap the JSON in ```json or any markdown.\n\nUse exactly this structure:\n\n{\n  \"action\": \"DISPATCH\",\n  \"selected_technician_id\": \"\",\n  \"selected_technician_name\": \"\",\n  \"estimated_arrival\": \"\",\n  \"dispatch_score\": 0,\n  \"reason\": \"\",\n  \"customer_impact\": \"\",\n  \"dispatcher_message\": \"\",\n  \"manager_message\": \"\"\n}"
+            },
+            {
+              "content": "You are a senior HVAC emergency dispatch controller.\n\nYour job is to make the best operational decision for an HVAC emergency.\n\nYou must evaluate:\n1. Emergency priority\n2. Required technician skills\n3. Technician availability\n4. Technician distance\n5. Technician workload\n6. Required parts availability\n7. Customer/business impact\n8. Current operational time\n\nDecision rules:\nEVENT TYPE RULES:\n\nIf the event_type is \"Technician Cancellation\", this is NOT a normal new dispatch.\n\nThe purpose of the decision is to find a replacement technician for the cancelled assignment.\n\nFor \"Technician Cancellation\":\n- You MUST choose REASSIGN if another suitable technician is available.\n- Do NOT choose DISPATCH.\n- Evaluate all technicians except the cancelled technician if the cancelled technician can be identified.\n- Prefer an available qualified replacement with required parts.\n- If no suitable replacement exists, choose ESCALATE.\n- CRITICAL events must receive immediate attention whenever a qualified technician is available.\n- HIGH priority events should be dispatched as quickly as reasonably possible.\n- A technician must have the required skills.\n- Prefer an available qualified technician over a busy technician.\n- Prefer the closest qualified technician when other factors are comparable.\n- A technician who does not have required parts should not be selected if another suitable technician has them.\n- Do not select a technician whose skills clearly do not match the emergency.\n- If a currently assigned technician has cancelled, consider REASSIGN.\n- If no suitable technician exists, choose ESCALATE.\n- MONITOR should only be used when immediate intervention is not required.\n- Do not invent technician information.\n- Do not invent arrival times.\n- Base all decisions only on the supplied operational context.\n\nCalculate a practical dispatch score from 0-100 based on:\n- skill match\n- availability\n- distance\n- parts availability\n- workload\n- emergency priority\n\nReturn ONLY valid JSON.\n\nUse exactly this structure:\n\n{\n  \"action\": \"DISPATCH\",\n  \"selected_technician_id\": \"\",\n  \"selected_technician_name\": \"\",\n  \"estimated_arrival\": \"\",\n  \"dispatch_score\": 0,\n  \"reason\": \"\",\n  \"customer_impact\": \"\",\n  \"dispatcher_message\": \"\",\n  \"manager_message\": \"\"\n}\n\nAllowed action values:\nDISPATCH\nREASSIGN\nESCALATE\nMONITOR\n\nIf action is ESCALATE, selected technician fields should be empty.\n\nIf action is MONITOR, selected technician fields should be empty.\n\nFor estimated_arrival, only provide a time if the supplied data allows a reasonable estimate. Otherwise use \"Not available\".",
+              "role": "system"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "62441eaf-df6c-4ba2-8a31-94d3ec310dd2",
+      "name": "AI - Dispatch Decision",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -256,
+        64
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1",
+              "name": "action",
+              "value": "={{ JSON.parse($json.message.content.replace(/^```json\\s*|\\s*```$/g, '')).action }}",
+              "type": "string"
+            },
+            {
+              "id": "d2",
+              "name": "selected_technician",
+              "value": "={{ JSON.parse($json.message.content.replace(/^```json\\s*|\\s*```$/g, '')).selected_technician_name }}",
+              "type": "string"
+            },
+            {
+              "id": "d3",
+              "name": "selected_technician_id",
+              "value": "={{ JSON.parse($json.message.content.replace(/^```json\\s*|\\s*```$/g, '')).selected_technician_id }}",
+              "type": "string"
+            },
+            {
+              "id": "d4",
+              "name": "recommended_time",
+              "value": "={{ JSON.parse($json.message.content.replace(/^```json\\s*|\\s*```$/g, '')).estimated_arrival }}",
+              "type": "string"
+            },
+            {
+              "id": "d5",
+              "name": "dispatch_score",
+              "value": "={{ JSON.parse($json.message.content.replace(/^```json\\s*|\\s*```$/g, '')).dispatch_score }}",
+              "type": "number"
+            },
+            {
+              "id": "d6",
+              "name": "decision_reason",
+              "value": "={{ JSON.parse($json.message.content.replace(/^```json\\s*|\\s*```$/g, '')).reason }}",
+              "type": "string"
+            },
+            {
+              "id": "d7",
+              "name": "customer_impact",
+              "value": "={{ JSON.parse($json.message.content.replace(/^```json\\s*|\\s*```$/g, '')).customer_impact }}",
+              "type": "string"
+            },
+            {
+              "id": "d8",
+              "name": "dispatcher_message",
+              "value": "={{ JSON.parse($json.message.content.replace(/^```json\\s*|\\s*```$/g, '')).dispatcher_message }}",
+              "type": "string"
+            },
+            {
+              "id": "d9",
+              "name": "manager_message",
+              "value": "={{ JSON.parse($json.message.content.replace(/^```json\\s*|\\s*```$/g, '')).manager_message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "902b7099-5eb6-4d3f-b217-fdac57cb8479",
+      "name": "Dispatch Decision Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        112,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.action}}",
+                    "rightValue": "DISPATCH",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b9f1dfcb-afc2-45ca-a45e-ab95b43b3d42"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "DISPATCH"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.action}}",
+                    "rightValue": "REASSIGN",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "661e313d-2af8-48e1-af5b-a40ef57bdf35"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "REASSIGN"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.action}}",
+                    "rightValue": "ESCALATE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "80d2973c-37ee-4e88-aee7-27ccaf832ca4"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ESCALATE"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.action}}",
+                    "rightValue": "MONITOR",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "97b98a84-7cbf-4dcf-bd28-cdb959344b61"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "MONITOR"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "00eb6c06-a6c9-435a-9d23-121be7c5a6ed",
+      "name": "Switch - Operational Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        352,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Emergency Event Form').item.json['Customer Email'] }}",
+        "subject": "HVAC Service Dispatch Confirmed",
+        "message": "Hello {{ $('Emergency Event Form').item.json['Customer Name'] }}\n\nYour HVAC emergency request has been prioritized and a technician has been assigned.\n\nTechnician:\n{{ $('Dispatch Decision Result').item.json.selected_technician }}\n\nExpected Dispatch Time:\n{{ $('Dispatch Decision Result').item.json.recommended_time }}\n\nService Location:\n{{ $('Normalize Emergency Event').item.json.service_address }}\n\nIssue:\n{{ $('Normalize Emergency Event').item.json.issue_description }}\n\nOur operations team has prioritized this request due to the urgency of the reported cooling issue.\n\nIf the situation becomes more urgent before the technician arrives, please contact our service team immediately.\n\nThank you,\nHVAC Emergency Operations",
+        "options": {}
+      },
+      "id": "44551f6f-ffdd-4df7-9b37-5aae561943f1",
+      "name": "Gmail - Customer Dispatch Confirmation",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        640,
+        -208
+      ],
+      "webhookId": "f0f3f930-52fd-4d54-be46-d69f39ecbeb4",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cH4yJK2n35GiQ1Lw",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "manager@example.com",
+        "subject": "HVAC Dispatch Escalation",
+        "message": "HVAC event requires manager attention.\n\nEvent: {{$('Normalize Emergency Event').item.json.event_id}}\nCustomer: {{$('Normalize Emergency Event').item.json.customer_name}}\nPriority: {{$('Normalize Emergency Event').item.json.priority}}\nIssue: {{$('Normalize Emergency Event').item.json.issue_description}}\n\n{{$json.manager_message}}",
+        "options": {}
+      },
+      "id": "1f6ab0fd-e8cc-445c-9125-67cdcf15d8d2",
+      "name": "Gmail - Manager Escalation",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        640,
+        272
+      ],
+      "webhookId": "231a450d-8833-4180-bba4-6ce82f67ad39",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cH4yJK2n35GiQ1Lw",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "o1",
+              "name": "status",
+              "value": "={{$json.action}}",
+              "type": "string"
+            },
+            {
+              "id": "o2",
+              "name": "next_step",
+              "value": "={{$json.dispatcher_message || $json.manager_message || 'Continue monitoring operational event.'}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1f61e0eb-0c2e-4b6a-ae36-db90294972f1",
+      "name": "Operational Outcome",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        656,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "shahaaqib626@gmail.com",
+        "subject": "=URGENT: HVAC Job Reassigned - {{ $('Dispatch Decision Result').item.json.selected_technician }}",
+        "message": "=Hello,  An HVAC service job requires reassignment.  CUSTOMER {{ $('Emergency Event Form').item.json['Customer Name'] }}  CUSTOMER TYPE {{ $('Emergency Event Form').item.json['Customer Type'] }}  ISSUE {{ $('Emergency Event Form').item.json['Issue Description'] }}  LOCATION {{ $('Emergency Event Form').item.json['Service Address'] }}  AI DECISION {{ $('Dispatch Decision Result').item.json.action }}  SELECTED TECHNICIAN {{ $('Dispatch Decision Result').item.json.selected_technician }}  TECHNICIAN ID {{ $('Dispatch Decision Result').item.json.selected_technician_id }}  DISPATCH SCORE {{ $('Dispatch Decision Result').item.json.dispatch_score }}  REASON {{ $('Dispatch Decision Result').item.json.decision_reason }}  CUSTOMER IMPACT {{ $('Dispatch Decision Result').item.json.customer_impact }}  ACTION REQUIRED Please review the reassignment and ensure the emergency service request is handled without unnecessary delay.  HVAC Emergency Service Control Tower",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        640,
+        32
+      ],
+      "id": "443d459f-db4e-4d3a-ac55-f0b01b79aada",
+      "name": "Gmail - Technician Reassignment",
+      "webhookId": "65e6b45c-4502-4f19-9c24-8b7f5ccd5f7b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cH4yJK2n35GiQ1Lw",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Emergency Event Form": {
+      "main": [
+        [
+          {
+            "node": "AI - Event Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI - Event Classification": {
+      "main": [
+        [
+          {
+            "node": "Normalize Emergency Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Emergency Event": {
+      "main": [
+        [
+          {
+            "node": "Date & Time - Operational Clock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time - Operational Clock": {
+      "main": [
+        [
+          {
+            "node": "Operational Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Operational Context": {
+      "main": [
+        [
+          {
+            "node": "AI - Dispatch Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI - Dispatch Decision": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Decision Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch Decision Result": {
+      "main": [
+        [
+          {
+            "node": "Switch - Operational Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch - Operational Action": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Customer Dispatch Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail - Technician Reassignment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail - Manager Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Operational Outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "9abb79e9-cced-4860-a2de-47bb7c782f7d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "06a9d4680e46709f3db64d27c143a837c8339d197e0099aece5226524ba14b96"
+  },
+  "nodeGroups": [],
+  "id": "qPxXWl7np808asSH",
+  "tags": []
+}
